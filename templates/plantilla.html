@@ -1,0 +1,83 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Premios Nobel</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+</head>
+<body>
+    <h1>Premios Nobel</h1>
+
+    <h2>Ganadores por País</h2>
+    <canvas id="winnersChart"></canvas>
+
+    <h2>Ganadores Aleatorios</h2>
+    <button id="loadWinners">Cargar 5 Ganadores</button>
+    <ul id="winnersList"></ul>
+
+    <h2>Categorías por País</h2>
+    <canvas id="categoriesChart"></canvas>
+
+    <script>
+        $(document).ready(function() {
+            // Cargar gráfica de ganadores por país
+            $.get("/api/winners_by_country", function(data) {
+                let labels = data.map(d => d.country);
+                let values = data.map(d => d.count);
+
+                let ctx = document.getElementById("winnersChart").getContext("2d");
+                new Chart(ctx, {
+                    type: "bar",
+                    data: {
+                        labels: labels,
+                        datasets: [{
+                            label: "Ganadores por País",
+                            data: values,
+                            backgroundColor: "rgba(75, 192, 192, 0.6)"
+                        }]
+                    },
+                    options: { responsive: true }
+                });
+            });
+
+            // Cargar 5 ganadores aleatorios
+            $("#loadWinners").click(function() {
+                $.get("/api/random_winners", function(data) {
+                    let list = $("#winnersList");
+                    list.empty();
+                    data.forEach(winner => {
+                        list.append(`<li>${winner.name} - ${winner.category} (${winner.year})</li>`);
+                    });
+                });
+            });
+
+            // Cargar gráfica de categorías por país
+            $.get("/api/categories_by_country", function(data) {
+                let groupedData = {};
+                data.forEach(d => {
+                    let country = d.country;
+                    let category = d.category;
+                    if (!groupedData[country]) groupedData[country] = {};
+                    groupedData[country][category] = d.count;
+                });
+
+                let countries = Object.keys(groupedData);
+                let categories = [...new Set(data.map(d => d.category))];
+                let datasets = categories.map(category => ({
+                    label: category,
+                    data: countries.map(country => groupedData[country][category] || 0),
+                    backgroundColor: `rgba(${Math.random()*255}, ${Math.random()*255}, ${Math.random()*255}, 0.6)`
+                }));
+
+                new Chart(document.getElementById("categoriesChart").getContext("2d"), {
+                    type: "bar",
+                    data: { labels: countries, datasets: datasets },
+                    options: { responsive: true, scales: { x: { stacked: true }, y: { stacked: true } } }
+                });
+            });
+        });
+    </script>
+</body>
+</html>
